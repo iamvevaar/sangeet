@@ -53,7 +53,15 @@ function App() {
 
   useEffect(() => {
     if (song && audioRef.current) {
-      audioRef.current.play();
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("Autoplay was prevented:", error);
+          // Autoplay was prevented.
+          // We can't do much here without user interaction,
+          // but the user can still manually play from the controls.
+        });
+      }
     }
   }, [song]);
 

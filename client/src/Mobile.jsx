@@ -35,6 +35,7 @@ function Mobile() {
 
   const [song, setSong] = useState(null);
   const audioRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -64,6 +65,21 @@ function Mobile() {
     audioRef.current.currentTime = time;
     socket.emit('seek', { roomId, time });
   };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    audio.addEventListener('timeupdate', updateTime);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+    };
+  }, [song]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white p-4">
@@ -103,7 +119,7 @@ function Mobile() {
             <button onClick={handlePlay} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Play</button>
             <button onClick={handlePause} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Pause</button>
           </div>
-          <input type="range" defaultValue="0" max={audioRef.current?.duration || 0} onChange={handleSeek} className="w-full mt-4" />
+          <input type="range" value={currentTime} max={audioRef.current?.duration || 0} onChange={handleSeek} className="w-full mt-4" />
         </div>
       )}
     </div>
