@@ -1,9 +1,7 @@
-import { useState , useEffect} from 'react';
+import { useState , useEffect, useRef} from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
-
-const songs = ['Song 1', 'Song 2', 'Song 3', 'Song 4', 'Song 5'];
+const socket = io(`http://${window.location.hostname}:3001`);
 
 function Mobile() {
   const [roomId, setRoomId] = useState('');
@@ -35,8 +33,36 @@ function Mobile() {
     };
   }, []);
 
-  const handleSelectSong = (song) => {
-    socket.emit('selectSong', { roomId, song });
+  const [song, setSong] = useState(null);
+  const audioRef = useRef(null);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const audioData = e.target.result;
+        setSong(audioData);
+        socket.emit('playSong', { roomId, song: audioData });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePlay = () => {
+    audioRef.current.play();
+    socket.emit('play', { roomId });
+  };
+
+  const handlePause = () => {
+    audioRef.current.pause();
+    socket.emit('pause', { roomId });
+  };
+
+  const handleSeek = (event) => {
+    const time = event.target.value;
+    audioRef.current.currentTime = time;
+    socket.emit('seek', { roomId, time });
   };
 
   return (
@@ -59,20 +85,25 @@ function Mobile() {
           </button>
           {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
-      ) : (
+      ) : !song ? (
         <div>
-          <h2 className="text-2xl mb-4">Select a Song</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {songs.map((song) => (
-              <button
-                key={song}
-                onClick={() => handleSelectSong(song)}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-              >
-                {song}
-              </button>
-            ))}
+          <h2 className="text-2xl mb-4">Upload a Song</h2>
+          <input
+            type="file"
+            accept=".mp3"
+            onChange={handleFileChange}
+            className="bg-gray-700 text-white p-2 rounded"
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          <h2 className="text-2xl mb-4">Now Playing</h2>
+          <audio ref={audioRef} src={song} muted className="hidden" />
+          <div className="flex space-x-4">
+            <button onClick={handlePlay} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Play</button>
+            <button onClick={handlePause} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Pause</button>
           </div>
+          <input type="range" defaultValue="0" max={audioRef.current?.duration || 0} onChange={handleSeek} className="w-full mt-4" />
         </div>
       )}
     </div>

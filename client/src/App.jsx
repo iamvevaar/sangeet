@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
+const socket = io(`http://${window.location.hostname}:3001`);
 
 function App() {
   const [roomId, setRoomId] = useState('');
   const [song, setSong] = useState(null);
   const [mobileJoined, setMobileJoined] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     socket.emit('createRoom');
@@ -19,8 +20,20 @@ function App() {
       setMobileJoined(true);
     });
 
-    socket.on('playSong', (selectedSong) => {
-      setSong(selectedSong);
+    socket.on('playSong', (audioData) => {
+      setSong(audioData);
+    });
+
+    socket.on('play', () => {
+      audioRef.current.play();
+    });
+
+    socket.on('pause', () => {
+      audioRef.current.pause();
+    });
+
+    socket.on('seek', (time) => {
+      audioRef.current.currentTime = time;
     });
 
     socket.on('error', (message) => {
@@ -31,9 +44,18 @@ function App() {
       socket.off('roomCreated');
       socket.off('mobileJoined');
       socket.off('playSong');
+      socket.off('play');
+      socket.off('pause');
+      socket.off('seek');
       socket.off('error');
     };
   }, []);
+
+  useEffect(() => {
+    if (song && audioRef.current) {
+      audioRef.current.play();
+    }
+  }, [song]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
@@ -54,7 +76,7 @@ function App() {
       {song && (
         <div className="mt-8 text-center">
           <h2 className="text-2xl">Now Playing</h2>
-          <p className="text-xl mt-2">{song}</p>
+          <audio ref={audioRef} src={song} controls autoPlay className="mt-4" />
         </div>
       )}
     </div>

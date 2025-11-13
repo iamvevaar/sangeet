@@ -8,6 +8,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: '*',
   },
+  maxHttpBufferSize: 1e7, // 10MB
 });
 
 const rooms = {};
@@ -34,13 +35,35 @@ io.on('connection', (socket) => {
       rooms[roomId].mobile = socket.id;
       socket.join(roomId);
       io.to(rooms[roomId].web).emit('mobileJoined');
+      socket.emit('mobileJoined');
       console.log(`Mobile joined room: ${roomId}`);
     } else {
       socket.emit('error', 'Room not found');
     }
   });
 
-  socket.on('selectSong', (data) => {
+  socket.on('play', (data) => {
+    const { roomId } = data;
+    if (rooms[roomId] && rooms[roomId].web) {
+      io.to(rooms[roomId].web).emit('play');
+    }
+  });
+
+  socket.on('pause', (data) => {
+    const { roomId } = data;
+    if (rooms[roomId] && rooms[roomId].web) {
+      io.to(rooms[roomId].web).emit('pause');
+    }
+  });
+
+  socket.on('seek', (data) => {
+    const { roomId, time } = data;
+    if (rooms[roomId] && rooms[roomId].web) {
+      io.to(rooms[roomId].web).emit('seek', time);
+    }
+  });
+
+  socket.on('playSong', (data) => {
     const { roomId, song } = data;
     if (rooms[roomId] && rooms[roomId].web) {
       io.to(rooms[roomId].web).emit('playSong', song);
@@ -59,6 +82,6 @@ io.on('connection', (socket) => {
   });
 });
 
-httpServer.listen(3000, () => {
-  console.log('listening on *:3000');
+httpServer.listen(3001, () => {
+  console.log('listening on *:3001');
 });
